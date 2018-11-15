@@ -67,6 +67,8 @@ func main() {
 		fmt.Println(tcolor.WithColor(tcolor.Red, "incorrect feerate: "+err.Error()))
 		os.Exit(1)
 	}
+
+	// assemble transaction with necessary elements.
 	tx, err := assembleTx(h, int64(*value), uint32(*idx), sender, wif, feerateDecimal)
 	if err != nil {
 		fmt.Println(tcolor.WithColor(tcolor.Red, "assemble transaction failed: "+err.Error()))
