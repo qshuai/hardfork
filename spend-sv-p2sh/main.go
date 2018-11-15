@@ -17,6 +17,10 @@ import (
 	"github.com/shopspring/decimal"
 )
 
+var (
+	param = &chaincfg.TestNet3Params
+)
+
 const (
 	defaultSignatureSize = 107
 	defaultSequence      = 0xffffffff
@@ -49,12 +53,11 @@ func main() {
 		os.Exit(1)
 	}
 
+	dst, err := cashutil.DecodeAddress(*to, param)
 	if err != nil {
 		fmt.Println(tcolor.WithColor(tcolor.Red, "address encode failed, please check your privkey: "+err.Error()))
 		os.Exit(1)
 	}
-
-	dst, _ := cashutil.DecodeAddress(*to, &chaincfg.TestNet3Params)
 
 	// parse feerate
 	feerateDecimal, err := decimal.NewFromString(*feerate)

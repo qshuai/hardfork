@@ -17,6 +17,10 @@ import (
 	"github.com/shopspring/decimal"
 )
 
+var (
+	param = &chaincfg.TestNet3Params
+)
+
 const (
 	defaultSignatureSize = 107
 	defaultSequence      = 0xffffffff
@@ -54,7 +58,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	dst, _ := cashutil.DecodeAddress(*to, &chaincfg.TestNet3Params)
+	dst, _ := cashutil.DecodeAddress(*to, param)
 
 	// parse feerate
 	feerateDecimal, err := decimal.NewFromString(*feerate)
@@ -80,7 +84,9 @@ func main() {
 	fmt.Println(tcolor.WithColor(tcolor.Green, hex.EncodeToString(buf.Bytes())))
 }
 
-func assembleTx(hash *chainhash.Hash, value int64, idx uint32, sourcePkScript []byte, receiver cashutil.Address, wif *cashutil.WIF, feerate decimal.Decimal) (*wire.MsgTx, error) {
+func assembleTx(hash *chainhash.Hash, value int64, idx uint32, sourcePkScript []byte,
+	receiver cashutil.Address, wif *cashutil.WIF, feerate decimal.Decimal) (*wire.MsgTx, error) {
+
 	var tx wire.MsgTx
 	tx.Version = 1
 	tx.LockTime = 0
@@ -115,7 +121,8 @@ func sign(tx *wire.MsgTx, inputValueSlice []int64, pkScript []byte, wif *cashuti
 			return nil, err
 		}
 
-		script, err := txscript.NewScriptBuilder().AddData(wif.PrivKey.PubKey().SerializeCompressed()).AddOp(txscript.OP_CHECKDATASIG).Script()
+		script, err := txscript.NewScriptBuilder().AddData(wif.PrivKey.PubKey().SerializeCompressed()).
+			AddOp(txscript.OP_CHECKDATASIG).Script()
 		if err != nil {
 			return nil, err
 		}

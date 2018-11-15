@@ -16,6 +16,10 @@ import (
 	"github.com/shopspring/decimal"
 )
 
+var (
+	param = &chaincfg.TestNet3Params
+)
+
 const (
 	defaultSignatureSize = 107
 	defaultSequence      = 0xffffffff
@@ -49,13 +53,13 @@ func main() {
 	pubKey := wif.PrivKey.PubKey()
 	pubKeyBytes := pubKey.SerializeCompressed()
 	pkHash := cashutil.Hash160(pubKeyBytes)
-	sender, err := cashutil.NewAddressPubKeyHash(pkHash, &chaincfg.TestNet3Params)
+	sender, err := cashutil.NewAddressPubKeyHash(pkHash, param)
 	if err != nil {
 		fmt.Println(tcolor.WithColor(tcolor.Red, "address encode failed, please check your privkey: "+err.Error()))
 		os.Exit(1)
 	}
 
-	dst, _ := cashutil.DecodeAddress(*to, &chaincfg.TestNet3Params)
+	dst, _ := cashutil.DecodeAddress(*to, param)
 
 	// parse feerate
 	feerateDecimal, err := decimal.NewFromString(*feerate)
@@ -86,7 +90,8 @@ func assembleTx(hash *chainhash.Hash, value int64, idx uint32, sender, receiver 
 	tx.Version = 1
 	tx.LockTime = 0
 
-	script, err := txscript.NewScriptBuilder().AddData(wif.SerializePubKey()).AddOp(txscript.OP_CHECKDATASIG).Script()
+	script, err := txscript.NewScriptBuilder().AddData(wif.SerializePubKey()).
+		AddOp(txscript.OP_CHECKDATASIG).Script()
 	if err != nil {
 		return nil, err
 	}
@@ -96,7 +101,8 @@ func assembleTx(hash *chainhash.Hash, value int64, idx uint32, sender, receiver 
 		return nil, err
 	}
 
-	pkScript, err := txscript.NewScriptBuilder().AddOp(txscript.OP_HASH160).AddData(scriptHash).AddOp(txscript.OP_EQUAL).Script()
+	pkScript, err := txscript.NewScriptBuilder().AddOp(txscript.OP_HASH160).
+		AddData(scriptHash).AddOp(txscript.OP_EQUAL).Script()
 	if err != nil {
 		return nil, err
 	}
