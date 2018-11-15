@@ -60,7 +60,11 @@ func main() {
 		os.Exit(1)
 	}
 
-	dst, _ := cashutil.DecodeAddress(*to, param)
+	dst, err := cashutil.DecodeAddress(*to, param)
+	if err != nil {
+		fmt.Println(tcolor.WithColor(tcolor.Red, "address encode failed, please check your privkey: "+err.Error()))
+		os.Exit(1)
+	}
 
 	// parse feerate
 	feerateDecimal, err := decimal.NewFromString(*feerate)
