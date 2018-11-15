@@ -23,18 +23,20 @@ var (
 const (
 	defaultSignatureSize = 107
 	defaultSequence      = 0xffffffff
+
+	// in fact, 540 satoshi is enough.
+	defaultP2SHoutputValue = 546
 )
 
 func main() {
 	privKey := flag.String("privkey", "", "private key of the sender")
-	to := flag.String("to", "", "the bitcoin cash address of receiver")
 	hash := flag.String("hash", "", "previous tx hash")
 	idx := flag.Int("idx", 0, "previous tx index")
 	value := flag.Int("value", 0, "the utxo value")
 	feerate := flag.String("feerate", "0.00001", "the specified feerate for bitcoin cash network")
 	flag.Parse()
 
-	if *privKey == "" || *to == "" || *hash == "" || *value == 0 {
+	if *privKey == "" || *hash == "" || *value == 0 {
 		fmt.Println(tcolor.WithColor(tcolor.Red, "arguments are not enough(privkey/to/hash/value required)"))
 		os.Exit(1)
 	}
@@ -47,7 +49,7 @@ func main() {
 	// parse privkey
 	wif, err := cashutil.DecodeWIF(*privKey)
 	if err != nil {
-		fmt.Println(tcolor.WithColor(tcolor.Red, "privvate key format error: "+err.Error()))
+		fmt.Println(tcolor.WithColor(tcolor.Red, "private key format error: "+err.Error()))
 		os.Exit(1)
 	}
 	pubKey := wif.PrivKey.PubKey()
@@ -59,19 +61,13 @@ func main() {
 		os.Exit(1)
 	}
 
-	dst, err := cashutil.DecodeAddress(*to, param)
-	if err != nil {
-		fmt.Println(tcolor.WithColor(tcolor.Red, "address encode failed, please check your privkey: "+err.Error()))
-		os.Exit(1)
-	}
-
 	// parse feerate
 	feerateDecimal, err := decimal.NewFromString(*feerate)
 	if err != nil {
 		fmt.Println(tcolor.WithColor(tcolor.Red, "incorrect feerate: "+err.Error()))
 		os.Exit(1)
 	}
-	tx, err := assembleTx(h, int64(*value), uint32(*idx), sender, dst, wif, feerateDecimal)
+	tx, err := assembleTx(h, int64(*value), uint32(*idx), sender, wif, feerateDecimal)
 	if err != nil {
 		fmt.Println(tcolor.WithColor(tcolor.Red, "assemble transaction failed: "+err.Error()))
 		os.Exit(1)
@@ -87,40 +83,47 @@ func main() {
 	fmt.Println(tcolor.WithColor(tcolor.Green, hex.EncodeToString(buf.Bytes())))
 }
 
-func assembleTx(hash *chainhash.Hash, value int64, idx uint32, sender, receiver cashutil.Address,
+func assembleTx(hash *chainhash.Hash, value int64, idx uint32, sender cashutil.Address,
 	wif *cashutil.WIF, feerate decimal.Decimal) (*wire.MsgTx, error) {
 
 	var tx wire.MsgTx
 	tx.Version = 1
 	tx.LockTime = 0
 
+	// reference a spendable utxo
+	outpoint := wire.NewOutPoint(hash, idx)
+	tx.TxIn = append(tx.TxIn, wire.NewTxIn(outpoint, nil))
+	tx.TxIn[0].Sequence = defaultSequence
+
+	// p2sh lock script with opcode OP_CHECKDATASIG
 	script, err := txscript.NewScriptBuilder().AddData(wif.SerializePubKey()).
 		AddOp(txscript.OP_CHECKDATASIG).Script()
 	if err != nil {
 		return nil, err
 	}
 	scriptHash := cashutil.Hash160(script)
-	tx.TxOut = make([]*wire.TxOut, 1)
-	if err != nil {
-		return nil, err
-	}
 
-	pkScript, err := txscript.NewScriptBuilder().AddOp(txscript.OP_HASH160).
+	// create a output with hash(payload: public key and OP_CHECKDATASIG)
+	tx.TxOut = make([]*wire.TxOut, 2)
+	hashScript, err := txscript.NewScriptBuilder().AddOp(txscript.OP_HASH160).
 		AddData(scriptHash).AddOp(txscript.OP_EQUAL).Script()
 	if err != nil {
 		return nil, err
 	}
-	tx.TxOut[0] = &wire.TxOut{PkScript: pkScript}
+	tx.TxOut[0] = &wire.TxOut{PkScript: hashScript, Value: defaultP2SHoutputValue}
 
-	outpoint := wire.NewOutPoint(hash, idx)
-	tx.TxIn = append(tx.TxIn, wire.NewTxIn(outpoint, nil))
-	tx.TxIn[0].Sequence = defaultSequence
+	// add a change output, the offset in output is 1.
+	changeScript, err := txscript.PayToAddrScript(sender)
+	if err != nil {
+		return nil, err
+	}
+	tx.TxOut[1] = &wire.TxOut{PkScript: changeScript}
 
+	// calculate the chang amount
 	txsize := tx.SerializeSize() + defaultSignatureSize
-
 	fee := feerate.Mul(decimal.New(int64(txsize*1e5), 0)).Truncate(0).IntPart()
 	outValue := value - fee
-	tx.TxOut[0].Value = outValue
+	tx.TxOut[1].Value = outValue
 
 	sourcePkScript, err := txscript.PayToAddrScript(sender)
 	if err != nil {
@@ -149,13 +152,13 @@ func sign(tx *wire.MsgTx, inputValueSlice []int64, pkScript []byte, wif *cashuti
 		sig = append(sig, pk...)
 		tx.TxIn[0].SignatureScript = sig
 
+		// check whether signature is ok or not.
 		engine, err := txscript.NewEngine(pkScript, tx, idx, txscript.StandardVerifyFlags,
 			nil, nil, inputValueSlice[idx])
 		if err != nil {
 			return nil, err
 		}
-
-		// verify the signature
+		// execution the script in stack
 		err = engine.Execute()
 		if err != nil {
 			return nil, err
