@@ -29,7 +29,6 @@ var (
 
 	wif            *cashutil.WIF
 	sender         cashutil.Address
-	receiver       cashutil.Address
 	feerateDecimal decimal.Decimal
 	wait           int
 
@@ -41,7 +40,7 @@ const (
 	defaultSequence      = 0xffffffff
 
 	// in fact, 540 satoshi is enough.
-	defaultP2SHoutputValue = 546 + 546
+	defaultP2SHoutputValue = 546
 
 	// to ensure the transaction will be relayed
 	addfee = 10
@@ -224,17 +223,13 @@ func spendAssembleTx(u utxo, wif *cashutil.WIF) (*wire.MsgTx, error) {
 
 	// add a OP_RETURN output
 	tx.TxOut = make([]*wire.TxOut, 1)
-	//script, err := txscript.NewScriptBuilder().AddOp(txscript.OP_RETURN).
-	//	AddData([]byte("the transaction is valid on chain of bitcoin-abc")).
-	//	Script()
-	//if err != nil {
-	//	return nil, err
-	//}
-	script, err := txscript.PayToAddrScript(receiver)
+	script, err := txscript.NewScriptBuilder().AddOp(txscript.OP_RETURN).
+		AddData([]byte("the transaction is valid on chain of bitcoin-abc")).
+		Script()
 	if err != nil {
 		return nil, err
 	}
-	tx.TxOut[0] = wire.NewTxOut(600, script)
+	tx.TxOut[0] = wire.NewTxOut(0, script)
 
 	outpoint := wire.NewOutPoint(u.hash, uint32(u.vout))
 	tx.TxIn = append(tx.TxIn, wire.NewTxIn(outpoint, nil))
@@ -352,7 +347,6 @@ func GetRPC(host, user, passwd string) *rpcclient.Client {
 
 func init() {
 	privKey := flag.String("privkey", "", "private key of the sender")
-	r := flag.String("receiver", "", "input the receiver for p2sh utxo")
 	feerate := flag.String("feerate", "0.00001", "the specified feerate for bitcoin cash network")
 	second := flag.Int("wait", 60, "the interval for creating transaction")
 
@@ -363,21 +357,15 @@ func init() {
 
 	wait = *second
 
-	if *privKey == "" || *r == "" {
+	if *privKey == "" {
 		fmt.Println(tcolor.WithColor(tcolor.Red, "empty private key and receiver not allowed"))
-		os.Exit(1)
-	}
-
-	var err error
-	receiver, err = cashutil.DecodeAddress(*r, param)
-	if err != nil {
-		fmt.Println(tcolor.WithColor(tcolor.Red, "parse address failed: "+err.Error()))
 		os.Exit(1)
 	}
 
 	client = GetRPC(*host, *user, *passwd)
 
 	// parse privkey
+	var err error
 	wif, err = cashutil.DecodeWIF(*privKey)
 	if err != nil {
 		fmt.Println(tcolor.WithColor(tcolor.Red, "private key format error: "+err.Error()))
@@ -407,7 +395,7 @@ func init() {
 
 	hashStr := []string{
 		//"328040b5b468780eb62d99a1d3da5f1c998ed6d27a08105eadbaaed1b1b98091:0:9996659",
-		"99022c75078468e014cef60d37c693fc5b97caf6c72030dd184921acfe9ffb8c:1:9991420",
+		"68c8f06acdb8ffaba46ee00be068613871c403b4639e939e3f456c436e2d16e8:1:9977380",
 		//"328040b5b468780eb62d99a1d3da5f1c998ed6d27a08105eadbaaed1b1b98091:0:9996659",
 		//"130c71332c18a3501393efd1072c71be143df4fcf5b51f16b3aea6c0aec1f0ff:1:10000000",
 		//"507e803856874766706e622a089b138f2d8e935fd7f9aed8593e5a2799393322:0:10000000",
