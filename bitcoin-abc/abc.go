@@ -55,7 +55,7 @@ type utxo struct {
 
 func main() {
 	for u := range utxos {
-		fmt.Println("available utxo:", len(utxos))
+		fmt.Println("available utxo:", len(utxos)+1)
 
 		// assemble transaction with necessary elements.
 		tx, err := createAssembleTx(u, sender, wif, feerateDecimal)
