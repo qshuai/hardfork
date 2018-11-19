@@ -30,6 +30,9 @@ var (
 	feerateDecimal decimal.Decimal
 	wait           int
 
+	receiver cashutil.Address
+	amount   *int
+
 	utxos chan utxo
 )
 
@@ -156,7 +159,7 @@ func createAssembleTx(u utxo, sender cashutil.Address,
 	if err != nil {
 		return nil, err
 	}
-	tx.TxOut[0] = &wire.TxOut{PkScript: pkScript, Value: defaultP2SHoutputValue}
+	tx.TxOut[0] = &wire.TxOut{PkScript: pkScript, Value: int64(*amount) + 300}
 	// ========================================================================================
 
 	// add a change output, the offset in output is 1.
@@ -169,7 +172,7 @@ func createAssembleTx(u utxo, sender cashutil.Address,
 	// calculate the chang amount
 	txsize := tx.SerializeSize() + defaultSignatureSize
 	fee := feerate.Mul(decimal.New(int64(txsize*1e5), 0)).Truncate(0).IntPart()
-	outValue := u.value - fee - addfee - defaultP2SHoutputValue
+	outValue := u.value - fee - addfee - int64(*amount) - 300
 	tx.TxOut[1].Value = outValue
 
 	sourcePkScript, err := txscript.PayToAddrScript(sender)
@@ -221,14 +224,19 @@ func spendAssembleTx(u utxo, wif *cashutil.WIF) (*wire.MsgTx, error) {
 	tx.LockTime = 0
 
 	// add a OP_RETURN output
-	tx.TxOut = make([]*wire.TxOut, 1)
-	script, err := txscript.NewScriptBuilder().AddOp(txscript.OP_RETURN).
-		AddData([]byte("the transaction is valid on chain of bitcoin-sv")).
-		Script()
+	//tx.TxOut = make([]*wire.TxOut, 1)
+	//script, err := txscript.NewScriptBuilder().AddOp(txscript.OP_RETURN).
+	//	AddData([]byte("the transaction is valid on chain of bitcoin-sv")).
+	//	Script()
+	//if err != nil {
+	//	return nil, err
+	//}
+	script, err := txscript.PayToAddrScript(receiver)
 	if err != nil {
 		return nil, err
 	}
-	tx.TxOut[0] = wire.NewTxOut(0, script)
+	tx.TxOut = make([]*wire.TxOut, 1)
+	tx.TxOut[0] = wire.NewTxOut(int64(*amount), script)
 
 	outpoint := wire.NewOutPoint(u.hash, uint32(u.vout))
 	tx.TxIn = append(tx.TxIn, wire.NewTxIn(outpoint, nil))
@@ -333,6 +341,9 @@ func GetRPC(host, user, passwd string) *rpcclient.Client {
 }
 
 func init() {
+	r := flag.String("receiver", "", "receiver address")
+	amount = flag.Int("amount", 546, "amount for receiver[in satoshi]")
+
 	privKey := flag.String("privkey", "", "private key of the sender")
 	feerate := flag.String("feerate", "0.00001", "the specified feerate for bitcoin cash network")
 	second := flag.Int("wait", 60, "the interval for creating transaction")
@@ -344,15 +355,22 @@ func init() {
 
 	wait = *second
 
-	if *privKey == "" {
+	if *privKey == "" || *r == "" {
 		fmt.Println(tcolor.WithColor(tcolor.Red, "empty private key not allowed"))
 		os.Exit(1)
 	}
 
 	client = GetRPC(*host, *user, *passwd)
 
-	// parse privkey
 	var err error
+	// decode receiver address
+	receiver, err = cashutil.DecodeAddress(*r, param)
+	if err != nil {
+		fmt.Println(tcolor.WithColor(tcolor.Red, "invalid receiver address: "+err.Error()))
+		os.Exit(1)
+	}
+
+	// parse privkey
 	wif, err = cashutil.DecodeWIF(*privKey)
 	if err != nil {
 		fmt.Println(tcolor.WithColor(tcolor.Red, "private key format error: "+err.Error()))
@@ -385,7 +403,7 @@ func init() {
 		//"328040b5b468780eb62d99a1d3da5f1c998ed6d27a08105eadbaaed1b1b98091:0:9996659",
 		//"b9b35b7a35ce55193c7bfc201cc4aaf88caa0cf86d36eca2a1f36f90b6a694cc:1:10000000",
 		//"5d9c28fc540286c34ba7357398955f6398cc226b3375dd6e241adf5d1f12489a:1:10000000",
-		"417d9a7bd732a300e59fd4df718f5a585a6e4e2f40d908ac416cb999038694aa:1:9973480",
+		"4bf1d855e8dd53f4a0e1756718e817ce9b8c0f4afe4de68c3b09441937ee49ec:1:9960220",
 		//"2c0dc0d4f3da54b1356c10bf2077ee0875dde63e664c89672a11df395c7d343a:1:9993760",
 	}
 
