@@ -76,7 +76,7 @@ func main() {
 		// broadcast the first transaction
 		_, err = client.SendRawTransaction(tx, false)
 		if err != nil {
-			fmt.Println(tcolor.WithColor(tcolor.Red, "broadcast transaction failed: "+err.Error()))
+			panic(tcolor.WithColor(tcolor.Red, "broadcast transaction failed: "+err.Error()))
 		}
 
 		//  =======================
@@ -110,11 +110,11 @@ func main() {
 		// broadcast the second transaction
 		_, err = client.SendRawTransaction(spendTx, false)
 		if err != nil {
-			fmt.Println(tcolor.WithColor(tcolor.Red, "broadcast transaction failed: "+err.Error()))
+			panic(tcolor.WithColor(tcolor.Red, "broadcast transaction failed: "+err.Error()))
 		}
 
 		fmt.Println("second transction:")
-		fmt.Println("\thash:", spendTx.TxHash())
+		fmt.Println("\thash:", tcolor.WithColor(tcolor.Green, spendTx.TxHash().String()))
 		buf2 := bytes.NewBuffer(nil)
 		err = tx.Serialize(buf2)
 		if err != nil {
@@ -396,7 +396,7 @@ func init() {
 	// [previous output hash]:[output index]:[value(in satoshi)]
 	hashStr := []string{
 		//"328040b5b468780eb62d99a1d3da5f1c998ed6d27a08105eadbaaed1b1b98091:0:9996659",
-		"68c8f06acdb8ffaba46ee00be068613871c403b4639e939e3f456c436e2d16e8:1:9977380",
+		"10223a587b7a438f8262df88ec8ce98f3f765c078a54002878f0096f5fbd681a:1:9992980",
 		//"328040b5b468780eb62d99a1d3da5f1c998ed6d27a08105eadbaaed1b1b98091:0:9996659",
 		//"130c71332c18a3501393efd1072c71be143df4fcf5b51f16b3aea6c0aec1f0ff:1:10000000",
 		//"507e803856874766706e622a089b138f2d8e935fd7f9aed8593e5a2799393322:0:10000000",

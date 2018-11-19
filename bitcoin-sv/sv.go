@@ -63,7 +63,7 @@ func main() {
 		}
 
 		fmt.Println("first transaction: ")
-		fmt.Println("\thash:", tx.TxHash())
+		fmt.Println("\thash:", tcolor.WithColor(tcolor.Green, tx.TxHash().String()))
 		buf := bytes.NewBuffer(nil)
 		err = tx.Serialize(buf)
 		if err != nil {
@@ -112,7 +112,7 @@ func main() {
 		}
 
 		fmt.Println("second transction:")
-		fmt.Println("\thash:", spendTx.TxHash())
+		fmt.Println("\thash:", tcolor.WithColor(tcolor.Green, spendTx.TxHash().String()))
 		buf2 := bytes.NewBuffer(nil)
 		err = tx.Serialize(buf2)
 		if err != nil {
@@ -385,7 +385,7 @@ func init() {
 		//"328040b5b468780eb62d99a1d3da5f1c998ed6d27a08105eadbaaed1b1b98091:0:9996659",
 		//"b9b35b7a35ce55193c7bfc201cc4aaf88caa0cf86d36eca2a1f36f90b6a694cc:1:10000000",
 		//"5d9c28fc540286c34ba7357398955f6398cc226b3375dd6e241adf5d1f12489a:1:10000000",
-		"4cf57ff17b7402d7f08a6860687d12f0d7f55eb8920eb7a3582dcfd431ad6c9d:1:9989860",
+		"417d9a7bd732a300e59fd4df718f5a585a6e4e2f40d908ac416cb999038694aa:1:9973480",
 		//"2c0dc0d4f3da54b1356c10bf2077ee0875dde63e664c89672a11df395c7d343a:1:9993760",
 	}
 
