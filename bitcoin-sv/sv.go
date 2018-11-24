@@ -340,11 +340,13 @@ func init() {
 	host := flag.String("rpchost", "127.0.0.1:8332", "Please input rpc host(ip:port)")
 	user := flag.String("rpcuser", "", "Please input your rpc username")
 	passwd := flag.String("rpcpassword", "", "Please input your rpc password")
+
+	u := flag.String("utxo", "", "please input a spendable utxo, format[hash:index:value]")
 	flag.Parse()
 
 	wait = *second
 
-	if *privKey == "" {
+	if *privKey == "" || *u == "" {
 		fmt.Println(tcolor.WithColor(tcolor.Red, "empty private key not allowed"))
 		os.Exit(1)
 	}
@@ -378,18 +380,7 @@ func init() {
 
 	// init utxo container
 	utxos = make(chan utxo, 100)
-	// insert some utxos, using hard code,
-	// the format:
-	// [previous output hash]:[output index]:[value(in satoshi)]
-	hashStr := []string{
-		//"328040b5b468780eb62d99a1d3da5f1c998ed6d27a08105eadbaaed1b1b98091:0:9996659",
-		//"b9b35b7a35ce55193c7bfc201cc4aaf88caa0cf86d36eca2a1f36f90b6a694cc:1:10000000",
-		//"5d9c28fc540286c34ba7357398955f6398cc226b3375dd6e241adf5d1f12489a:1:10000000",
-		"417d9a7bd732a300e59fd4df718f5a585a6e4e2f40d908ac416cb999038694aa:1:9973480",
-		//"2c0dc0d4f3da54b1356c10bf2077ee0875dde63e664c89672a11df395c7d343a:1:9993760",
-	}
-
-	ret, err := paseUtxo(hashStr, sender)
+	ret, err := paseUtxo([]string{*u}, sender)
 	if err != nil {
 		fmt.Println(tcolor.WithColor(tcolor.Red, "init utxo failed: "+err.Error()))
 		os.Exit(1)
